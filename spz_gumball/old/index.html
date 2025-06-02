@@ -1,0 +1,57 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mesh Upload & Gumball Manipulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    #upload {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1;
+      background: rgba(255,255,255,0.9);
+      padding: 15px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #upload input[type="file"] { display: none; }
+    #upload label {
+      display: inline-block;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+    #upload label:hover { background: #45a049; }
+    #fileName { margin-top: 5px; font-size: 12px; color: #333; }
+    canvas { display: block; }
+  </style>
+  <!-- Import maps for modules -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="upload">
+    <input id="fileInput" type="file" accept=".glb,.gltf">
+    <label for="fileInput">Choose 3D Model</label>
+    <div id="fileName">No file selected</div>
+  </div>
+  <!-- Main application script -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+
+

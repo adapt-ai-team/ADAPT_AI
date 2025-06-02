@@ -1,0 +1,5 @@
+D:
+  ADAPT_AI
+    spz_pipeline
+      pipeline_outputs
+        run_pipeline.py

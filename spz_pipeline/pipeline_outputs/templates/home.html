@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FormaFlow | Simulation</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="../static/home.css" />
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+    .model-container {
+        position: relative;
+        width: 100%;
+        height: 700px; /* Changed from 500px to 700px */
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .mode-btn {
+        padding: 8px 16px;
+        margin: 0 4px;
+        border: none;
+        border-radius: 4px;
+        background-color: #f0f0f0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .mode-btn:hover {
+        background-color: #e0e0e0;
+    }
+
+    .mode-btn.active {
+        background-color: #2196F3;
+        color: white;
+    }
+
+    .mode-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .model-controls {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        z-index: 100;
+    }
+
+    .screenshot-icon {
+        margin-right: 5px;
+    }
+
+    /* Add this to your existing CSS */
+    .screenshot-button {
+      background-color: #4CAF50 !important; /* Green background */
+      color: white;
+    }
+    
+    .screenshot-button:hover {
+      background-color: #45a049 !important;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="top-menu">
+        <div class="forma-flow">
+          <img class="adapt-logo" src="../static/adapt-ai-logo.png" alt="ADAPT AI Logo" onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML += '<div class=\'logo-placeholder\'>ADAPT AI</div>';">
+          <span class="forma">ADAPT</span><span class="flow">AI</span>
+        </div>
+        <div class="share-button">
+          <div class="noun-share-blue"></div>
+          <span class="share">Share</span>
+        </div>
+      </div>
+      <div class="screenshot"></div>
+      <div class="flex-row-bd">
+        <div class="frame">
+          <div class="group">
+            <span class="f">F</span><span class="f-1">F</span>
+          </div>
+          <div class="rectangle"></div>
+          <div class="rectangle-2"></div>
+          <div class="rectangle-3"></div>
+          <div class="rectangle-4"></div>
+          <div class="rectangle-5"></div>
+        </div>
+        <div class="project-page">
+          <div class="group-6">
+            <div class="idea">
+              <div class="upload-your-idea">
+                <span class="upload">UPLOAD<br /></span>
+                <span class="your-idea-7">YOUR IDEA</span>
+              </div>
+              <div class="preview-image" id="imagePreview"></div>
+            </div>
+            <div class="location">
+              <div class="location-input">
+                <span class="location-title">ENTER THE<br />LOCATION</span>
+                <div class="coordinates-input">
+                  <div class="input-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="number" id="latitude" step="0.000001" placeholder="Enter latitude">
+                  </div>
+                  <div class="input-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="number" id="longitude" step="0.000001" placeholder="Enter longitude">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="button-container">
+              <div class="action-button create-button active" onclick="handleStepClick('create')">
+                <span class="button-text">CREATE</span>
+              </div>
+              <div class="action-button save-button" onclick="handleStepClick('save')">
+                <span class="button-text">SAVE</span>
+              </div>
+              <div class="action-button run-button" onclick="handleStepClick('run')">
+                <span class="button-text">RUN</span>
+              </div>
+              <!-- Add the screenshot button with matching style -->
+              <div class="action-button screenshot-button" id="screenshotBtn">
+                <span class="button-text">SCREENSHOT</span>
+              </div>
+            </div>
+          </div>
+          <div class="suggestions">
+            <div class="project-informations">
+              <span class="project">PROJECT<br /></span
+              ><span class="informations">INFORMATIONS</span>
+            </div>
+          </div>
+          <div class="simulation">
+            <div class="environmental-simulation">
+              <span class="environmental">ENVIRONMENTAL<br /></span>
+              <span class="simulation-9">SIMULATION</span>
+              <div class="model-container" style="position: relative; width: 100%; height: 700px;">
+  <model-viewer
+    id="modelViewer"
+    camera-controls
+    interaction-prompt="when-focused"
+    auto-rotate
+    shadow-intensity="1"
+    exposure="1"
+    environment-image="neutral"
+    style="width: 100%; height: 100%; display: block;"
+    interaction-policy="allow-when-focused">
+  </model-viewer>
+</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="imageInput" accept="image/*" style="display: none;">
+    </div>
+
+    <!-- Load dependencies in correct order -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+    <!-- Main Application Script -->
+    <script>
+    // Global state management
+    const AppState = {
+        selectedImage: null,
+        currentStep: 'create',
+        steps: ['create', 'save', 'run'],
+        modelState: { meshes: {} },
+        apiBaseUrl: 'http://localhost:5000'
+    };
+
+    // Image Upload Handling
+    document.addEventListener('DOMContentLoaded', function() {
+        const ideaElement = document.querySelector('.idea');
+        const imageInput = document.getElementById('imageInput');
+
+        ideaElement.addEventListener('click', () => imageInput.click());
+
+        imageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    ideaElement.style.backgroundImage = `url(${e.target.result})`;
+                    ideaElement.style.backgroundSize = 'cover';
+                    ideaElement.style.backgroundPosition = 'center';
+                    document.querySelector('.upload-your-idea').style.display = 'none';
+                    AppState.selectedImage = file;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    // Pipeline Step Handling
+    async function handleStepClick(step) {
+        try {
+            if (!validateStep(AppState.currentStep)) return;
+
+            document.querySelector(`.${AppState.currentStep}-button .button-text`).textContent = 'PROCESSING...';
+
+            let response;
+            
+            if (AppState.currentStep === 'create') {
+                if (!AppState.selectedImage) {
+                    throw new Error('Please select an image first');
+                }
+                const formData = new FormData();
+                formData.append('image', AppState.selectedImage);
+                formData.append('latitude', document.getElementById('latitude').value);
+                formData.append('longitude', document.getElementById('longitude').value);
+                
+                response = await fetch(`${AppState.apiBaseUrl}/${AppState.currentStep}_step`, {
+                    method: 'POST',
+                    body: formData
+                });
+            } 
+            else if (AppState.currentStep === 'save') {
+                // For save step, send the current model state as JSON
+                response = await fetch(`${AppState.apiBaseUrl}/${AppState.currentStep}_step`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ modelState: AppState.modelState })
+                });
+            }
+            else if (AppState.currentStep === 'run') {
+                // For run step, just send a POST request
+                response = await fetch(`${AppState.apiBaseUrl}/${AppState.currentStep}_step`, {
+                    method: 'POST'
+                });
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error (${response.status}): ${errorText}`);
+            }
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (data.modelUrl) {
+                    await loadGLB(data.modelUrl);
+                }
+                setCurrentStep(AppState.steps[AppState.steps.indexOf(AppState.currentStep) + 1]);
+            } else {
+                throw new Error(data.message || 'Unknown error occurred');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`Error during ${AppState.currentStep} step: ${error.message}`);
+        } finally {
+            updateButtonText();
+        }
+    }
+
+    function setCurrentStep(step) {
+        AppState.currentStep = step;
+        updateButtons();
+        updateButtonText();
+    }
+
+    function updateButtons() {
+        AppState.steps.forEach(step => {
+            const button = document.querySelector(`.${step}-button`);
+            button.classList.remove('active');
+            if (AppState.steps.indexOf(step) <= AppState.steps.indexOf(AppState.currentStep)) {
+                button.classList.add('active');
+            }
+        });
+    }
+
+    function updateButtonText() {
+        AppState.steps.forEach(step => {
+            const textElement = document.querySelector(`.${step}-button .button-text`);
+            textElement.textContent = step.toUpperCase();
+        });
+    }
+
+    function validateStep(step) {
+        switch(step) {
+            case 'create':
+                if (!AppState.selectedImage) {
+                    alert('Please upload an image first.');
+                    return false;
+                }
+                const latitude = document.getElementById('latitude').value;
+                const longitude = document.getElementById('longitude').value;
+                if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+                    alert('Please enter valid coordinates.');
+                    return false;
+                }
+                return true;
+            case 'save':
+            case 'run':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    async function loadGLB(url = null) {
+        const modelViewer = document.getElementById('modelViewer');
+        if (!modelViewer) {
+            console.error('Model viewer element not found');
+            return;
+        }
+
+        try {
+            modelViewer.src = '';
+            modelViewer.style.display = 'block';
+
+            const timestamp = Date.now();
+            let glbUrl = url || `${AppState.apiBaseUrl}/merged_model.glb?t=${timestamp}`;
+            
+            if (AppState.currentStep === 'run') {
+                glbUrl = url || `${AppState.apiBaseUrl}/solar_radiation_example_image.glb?t=${timestamp}`;
+            }
+
+            modelViewer.src = glbUrl;
+            await new Promise((resolve, reject) => {
+                modelViewer.addEventListener('load', resolve, { once: true });
+                modelViewer.addEventListener('error', (e) => reject(new Error('Failed to load 3D model')), { once: true });
+            });
+            console.log('Model loaded successfully');
+            window.dispatchEvent(new Event('resize'));
+        } catch (error) {
+            console.error('Error loading model:', error);
+            alert('Error loading 3D model: ' + error.message);
+        }
+    }
+
+    // Logo error handler - make it globally available
+    window.handleLogoError = function(img) {
+        const parent = img.parentElement;
+        img.style.display = 'none';
+        
+        const placeholder = document.createElement('div');
+        placeholder.className = 'logo-placeholder';
+        placeholder.textContent = 'ADAPT AI';
+        
+        parent.appendChild(placeholder);
+    };
+
+    // Initialize buttons on load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateButtons();
+    });
+    </script>
+
+    <!-- Three.js and Transform Controls - Load last -->
+    <script type="module">
+    import * as THREE from 'three';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+    const modelViewer = document.getElementById('modelViewer');
+    let selectedMesh = null;
+    let transformControls = null;
+    let scene = null;
+    let camera = null;
+    let renderer = null;
+    let gumballCanvas = null;
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
+
+    // Initialize everything after model loads
+    modelViewer.addEventListener('load', () => {
+        console.log('Model loaded, initializing 3D controls...');
+        initializeControls();
+    });
+
+    function initializeControls() {
+        const checkModelLoaded = setInterval(() => {
+            if (modelViewer.model && modelViewer.model.scene) {
+                clearInterval(checkModelLoaded);
+                console.log('Model fully loaded, setting up controls...');
+                
+                // Get the Three.js scene and camera from model-viewer
+                scene = modelViewer.model.scene;
+                camera = modelViewer.camera;
+
+                // Log scene contents for debugging
+                console.log('Scene contents:', scene);
+                console.log('Camera:', camera);
+
+                // Initialize transform controls
+                setupTransformControls();
+                
+                // Setup mesh selection
+                setupMeshSelection();
+                
+                console.log('✅ 3D controls initialized');
+            }
+        }, 100);
+    }
+
+    function setupTransformControls() {
+        try {
+            // Create a container for the transform controls
+            const container = modelViewer.parentElement;
+            container.style.position = 'relative';
+
+            // Create canvas for transform controls
+            gumballCanvas = document.createElement('canvas');
+            gumballCanvas.style.position = 'absolute';
+            gumballCanvas.style.top = '0';
+            gumballCanvas.style.left = '0';
+            gumballCanvas.style.width = '100%';
+            gumballCanvas.style.height = '100%';
+            gumballCanvas.style.pointerEvents = 'none';
+            gumballCanvas.style.zIndex = '10';
+            container.appendChild(gumballCanvas);
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({
+                canvas: gumballCanvas,
+                alpha: true,
+                antialias: true
+            });
+            renderer.setClearColor(0x000000, 0);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+
+            // Create transform controls
+            transformControls = new TransformControls(camera, renderer.domElement);
+            transformControls.size = 0.75;
+            transformControls.addEventListener('dragging-changed', (event) => {
+                // Disable camera controls while transforming
+                modelViewer.interactionEnabled = !event.value;
+            });
+
+            transformControls.addEventListener('change', () => {
+                if (selectedMesh) {
+                    updateModelState();
+                    renderer.render(scene, camera);
+                }
+            });
+
+            transformControls.addEventListener('objectChange', () => {
+                if (selectedMesh) {
+                    updateModelState();
+                }
+            });
+
+            // Add transform controls to scene
+            scene.add(transformControls);
+            transformControls.visible = false;
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                if (transformControls && transformControls.visible) {
+                    renderer.render(scene, camera);
+                }
+            }
+            animate();
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (renderer && container) {
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+            });
+
+            console.log('✅ Transform controls initialized');
+        } catch (error) {
+            console.error('Error setting up transform controls:', error);
+        }
+    }
+
+    function setupMeshSelection() {
+        // First, ensure the model-viewer container has proper positioning
+        const container = modelViewer.parentElement;
+        container.style.position = 'relative';
+
+        // Create and add selection indicator
+        const selectionIndicator = document.createElement('div');
+        selectionIndicator.id = 'selectionInfo';
+        selectionIndicator.style.cssText = `
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            font-family: 'Raleway', sans-serif;
+        `;
+        selectionIndicator.textContent = ''; // Removed the text here
+        container.appendChild(selectionIndicator);
+
+        // Add click handler for mesh selection
+        modelViewer.addEventListener('click', (event) => {
+            try {
+                // Get the model-viewer's camera and scene
+                const camera = modelViewer.camera;
+                const scene = modelViewer.model.scene;
+
+                if (!camera || !scene) {
+                    console.error('Camera or scene not available');
+                    return;
+                }
+
+                // Calculate mouse position in normalized device coordinates
+                const rect = modelViewer.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                // Update the picking ray with the camera and mouse position
+                raycaster.setFromCamera(mouse, camera);
+
+                // Get all meshes in the scene
+                const meshes = [];
+                scene.traverse((object) => {
+                    if (object instanceof THREE.Mesh && object.visible) {
+                        // Clone the material to avoid affecting other instances
+                        if (object.material) {
+                            if (Array.isArray(object.material)) {
+                                object.material = object.material.map(mat => mat.clone());
+                            } else {
+                                object.material = object.material.clone();
+                            }
+                        }
+                        meshes.push(object);
+                    }
+                });
+
+                console.log('Found meshes:', meshes.length);
+
+                // Calculate objects intersecting the picking ray
+                const intersects = raycaster.intersectObjects(meshes, true);
+
+                console.log('Intersects:', intersects.length);
+
+                if (intersects.length > 0) {
+                    const mesh = intersects[0].object;
+                    console.log('Found mesh:', mesh);
+                    
+                    // Deselect previous mesh
+                    if (selectedMesh) {
+                        if (selectedMesh.material) {
+                            if (Array.isArray(selectedMesh.material)) {
+                                selectedMesh.material.forEach(mat => {
+                                    if (mat.emissive) mat.emissive.setHex(0x000000);
+                                });
+                            } else if (selectedMesh.material.emissive) {
+                                selectedMesh.material.emissive.setHex(0x000000);
+                            }
+                        }
+                    }
+
+                    // Select new mesh
+                    selectedMesh = mesh;
+                    if (selectedMesh.material) {
+                        if (Array.isArray(selectedMesh.material)) {
+                            selectedMesh.material.forEach(mat => {
+                                if (mat.emissive) mat.emissive.setHex(0x00ff00);
+                            });
+                        } else if (selectedMesh.material.emissive) {
+                            selectedMesh.material.emissive.setHex(0x00ff00);
+                        }
+                    }
+
+                    // Attach transform controls
+                    transformControls.attach(selectedMesh);
+                    transformControls.visible = true;
+
+                    // Enable transform buttons
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.disabled = false;
+                    });
+
+                    // Force a render
+                    if (renderer && scene && camera) {
+                        renderer.render(scene, camera);
+                    }
+
+                    console.log('✅ Selected mesh:', selectedMesh.name);
+                } else {
+                    // Deselect if clicking empty space
+                    if (selectedMesh) {
+                        if (selectedMesh.material) {
+                            if (Array.isArray(selectedMesh.material)) {
+                                selectedMesh.material.forEach(mat => {
+                                    if (mat.emissive) mat.emissive.setHex(0x000000);
+                                });
+                            } else if (selectedMesh.material.emissive) {
+                                selectedMesh.material.emissive.setHex(0x000000);
+                            }
+                        }
+                        selectedMesh = null;
+                        transformControls.visible = false;
+                        transformControls.detach();
+                    }
+                }
+            } catch (error) {
+                console.error('Error during mesh selection:', error);
+            }
+        });
+
+        // Add debug logging for scene setup
+        modelViewer.addEventListener('load', () => {
+            console.log('Model loaded, checking scene setup...');
+            const scene = modelViewer.model.scene;
+            if (scene) {
+                console.log('Scene found, traversing objects...');
+                scene.traverse((object) => {
+                    if (object instanceof THREE.Mesh) {
+                        console.log('Found mesh:', object.name || 'unnamed', object);
+                    }
+                });
+            } else {
+                console.error('No scene found in model-viewer');
+            }
+        });
+    }
+
+    // Make transform mode setter available globally
+    window.setTransformMode = function(mode) {
+        if (!transformControls || !selectedMesh) return;
+        
+        transformControls.setMode(mode);
+        
+        // Update UI
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = document.querySelector(`[onclick="setTransformMode('${mode}')"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        // Force a render
+        if (renderer && scene && camera) {
+            renderer.render(scene, camera);
+        }
+    };
+
+    function updateModelState() {
+        if (!selectedMesh) return;
+        
+        // Make sure we have the meshes object
+        if (!AppState.modelState.meshes) {
+            AppState.modelState.meshes = {};
+        }
+        
+        const meshKey = selectedMesh.name || 'unnamed';
+        
+        AppState.modelState.meshes[meshKey] = {
+            position: selectedMesh.position.toArray(),
+            rotation: selectedMesh.rotation.toArray(),
+            scale: selectedMesh.scale.toArray()
+        };
+        
+        console.log('📝 Updated model state:', AppState.modelState);
+    }
+
+    // Screenshot handling
+    document.getElementById('screenshotBtn').addEventListener('click', async () => {
+        const modelViewer = document.getElementById('modelViewer');
+        if (!modelViewer) {
+            alert('Model viewer not found');
+            return;
+        }
+
+        try {
+            // Hide UI elements
+            document.querySelector('.top-menu').style.display = 'none';
+            document.querySelector('.flex-row-bd').style.display = 'none';
+
+            // Wait for the next render
+            await new Promise(requestAnimationFrame);
+
+            // Take screenshot
+            const screenshot = await modelViewer.toBlob();
+            if (!screenshot) throw new Error('Failed to generate screenshot');
+
+            // Create download link
+            const url = URL.createObjectURL(screenshot);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'screenshot.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('Screenshot saved as screenshot.png');
+        } catch (error) {
+            console.error('Error taking screenshot:', error);
+            alert('Error taking screenshot: ' + error.message);
+        } finally {
+            // Show UI elements again
+            document.querySelector('.top-menu').style.display = 'flex';
+            document.querySelector('.flex-row-bd').style.display = 'flex';
+        }
+    });
+
+    // Screenshot functionality
+document.getElementById('screenshotBtn').addEventListener('click', async function() {
+  try {
+    // Show loading state
+    const originalText = this.querySelector('.button-text').textContent;
+    this.querySelector('.button-text').textContent = 'CAPTURING...';
+    this.classList.add('disabled');
+    
+    // Get the model-viewer element
+    const modelViewer = document.getElementById('modelViewer');
+    
+    // Take screenshot using the model-viewer's built-in toDataURL method
+    const screenshot = await modelViewer.toBlob({idealAspect: true, quality: 0.9});
+    
+    // Convert blob to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(screenshot); 
+    reader.onloadend = async function() {
+      const base64data = reader.result;
+      
+      // Send to server
+      const response = await fetch(`${AppState.apiBaseUrl}/save_screenshot`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          imageData: base64data,
+          filename: `simulation_screenshot_${Date.now()}.png`
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('Scrseenshot saved successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to save screenshot');
+      }
+    };
+  } catch (error) {
+    console.error('Error taking screenshot:', error);
+    alert('Failed to take screenshot: ' + error.message);
+  } finally {
+    // Reset button state
+    this.querySelector('.button-text').textContent = originalText;
+    this.classList.remove('disabled');
+  }
+});
+    </script>
+  </body>
+</html>

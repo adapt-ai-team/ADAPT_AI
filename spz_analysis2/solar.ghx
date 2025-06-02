@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gh version="1.0">
+  <definition>
+    <component name="Ladybug_Ladybug" nickname="LB" description="Ladybug Core" id="b4c8cde6-6a4b-4a9c-9837-b5f1f8a9e7b1">
+      <inputs>
+        <input name="Boolean" type="Boolean" value="True" />
+      </inputs>
+    </component>
+    
+    <component name="Ladybug_ImportEPW" nickname="EPW" description="Loads EPW file" id="c7e9f4d2-870d-4725-88cf-7b1eaf6b5b26">
+      <inputs>
+        <input name="_filePath" type="String" value="C:/path/to/weather_file.epw" />
+      </inputs>
+    </component>
+    
+    <component name="Brep" nickname="Brep" description="Geometry Input" id="a8b1c71d-d582-4bfa-b985-79f5980a7b7b">
+      <inputs>
+        <input name="Geometry" type="Geometry" />
+      </inputs>
+    </component>
+    
+    <component name="Ladybug_SkyMatrix" nickname="Sky" description="Generates sky matrix" id="f8b14b75-9456-4b94-89aa-3df7b1eaf774">
+      <inputs>
+        <input name="_epwFile" type="String" link="c7e9f4d2-870d-4725-88cf-7b1eaf6b5b26" />
+      </inputs>
+    </component>
+    
+    <component name="Ladybug_RadiationAnalysis" nickname="Radiation" description="Performs radiation analysis" id="d5c2b0b6-8456-47df-bd14-d1b58d4d5d41">
+      <inputs>
+        <input name="_geometry" type="Geometry" link="a8b1c71d-d582-4bfa-b985-79f5980a7b7b" />
+        <input name="_skyMatrix" type="Data" link="f8b14b75-9456-4b94-89aa-3df7b1eaf774" />
+      </inputs>
+    </component>
+    
+    <component name="Preview" nickname="Preview" description="Displays results" id="e8a7c3a7-38a8-4bc5-a9db-41b3d27d30c9">
+      <inputs>
+        <input name="_geometry" type="Geometry" link="a8b1c71d-d582-4bfa-b985-79f5980a7b7b" />
+        <input name="_values" type="Number" link="d5c2b0b6-8456-47df-bd14-d1b58d4d5d41" />
+      </inputs>
+    </component>
+  </definition>
+</gh>

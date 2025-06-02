@@ -1,0 +1,1 @@
+{"compilerOptions":{"module":"commonjs","removeComments":false,"esModuleInterop":true,"sourceMap":false,"declaration":false,"declarationMap":false,"target":"ES6","strict":true,"outDir":"dist","experimentalDecorators":true,"emitDecoratorMetadata":true,"moduleResolution":"node"},"exclude":["node_modules","dist"]}

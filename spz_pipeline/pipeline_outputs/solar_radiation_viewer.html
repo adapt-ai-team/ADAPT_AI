@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Solar Radiation Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/loaders/RGBELoader.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #error-message, #loading-message {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            border-radius: 5px;
+            display: none;
+        }
+        #error-message { background: rgba(255, 0, 0, 0.8); }
+    </style>
+</head>
+<body>
+    <div id="error-message">⚠️ Failed to load 3D model. Make sure the server is running and the file exists.</div>
+    <div id="loading-message">⏳ Loading 3D model, please wait...</div>
+
+    <script>
+        // 🌎 Scene, Camera, and Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+
+        // 🖱️ Orbit Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 1000;
+
+        // 🎥 Adjust Camera Position
+        camera.position.set(0, 5, 10);
+        controls.update();
+
+        // 🌞 Lighting Setup
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+        hemiLight.position.set(0, 10, 0);
+        scene.add(hemiLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+        directionalLight.position.set(5, 10, 5);
+        scene.add(directionalLight);
+
+        const backLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        backLight.position.set(-5, -10, -5);
+        scene.add(backLight);
+
+        // 🌎 Environment Map for Reflection
+        const loader = new THREE.RGBELoader();
+        loader.load('https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr', function (texture) {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.environment = texture;
+        });
+
+        // 🚀 Load the Correct GLB Model
+        const gltfLoader = new THREE.GLTFLoader();
+        const timestamp = new Date().getTime(); // ✅ Generates a unique timestamp
+        const glbFilePath = `http://localhost:8080/solar_radiation_example_image.glb?t=${timestamp}`;
+
+
+        console.log("🔄 Fetching GLB file from:", glbFilePath);
+
+        // Display loading message
+        document.getElementById("loading-message").style.display = "block";
+
+        fetch(glbFilePath, { method: 'HEAD' })  // ✅ Check if file exists before loading
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("GLB file not found.");
+                }
+                gltfLoader.load(glbFilePath, function (gltf) {
+                    document.getElementById("loading-message").style.display = "none";  // ✅ Hide loading message
+                    const model = gltf.scene;
+                    model.scale.set(1, 1, 1);
+                    scene.add(model);
+
+                    // Add white contour for mesh edges
+                    model.traverse(function (child) {
+                        if (child.isMesh) {
+                            const edges = new THREE.EdgesGeometry(child.geometry);
+                            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }));
+                            child.add(line);
+                        }
+                    });
+
+                    console.log("✅ GLB model loaded successfully.");
+                    animate();
+                }, undefined, function (error) {
+                    console.error("❌ Error loading model:", error);
+                    document.getElementById("error-message").style.display = "block";
+                    document.getElementById("loading-message").style.display = "none";
+                });
+            })
+            .catch(error => {
+                console.error("❌ GLB file not found:", error);
+                document.getElementById("error-message").style.display = "block";
+                document.getElementById("loading-message").style.display = "none";
+            });
+
+        // 🎬 Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 📏 Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Model Viewer</title>
+    <link rel="icon" href="data:,"> <!-- Empty favicon to prevent 404 -->
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .btn {
+            border: 2px solid gray;
+            color: gray;
+            background-color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        #status {
+            margin-top: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="upload-btn-wrapper">
+            <button class="btn">Upload GLTF/GLB Model</button>
+            <input type="file" id="upload" accept=".gltf,.glb" />
+        </div>
+        <div id="status">Default cube loaded. Click to select and manipulate.</div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+#05.05.2025
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FormaFlow | Simulation</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="home.css" />
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="top-menu">
+        <div class="forma-flow">
+          <span class="forma">ADAPT</span><span class="flow">AI</span>
+        </div>
+        <div class="share-button">
+          <div class="noun-share-blue"></div>
+          <span class="share">Share</span>
+        </div>
+      </div>
+      <div class="screenshot"></div>
+      <div class="flex-row-bd">
+        <div class="frame">
+          <div class="group">
+            <span class="f">F</span><span class="f-1">F</span>
+          </div>
+          <div class="rectangle"></div>
+          <div class="rectangle-2"></div>
+          <div class="rectangle-3"></div>
+          <div class="rectangle-4"></div>
+          <div class="rectangle-5"></div>
+        </div>
+        <div class="project-page">
+          <div class="group-6">
+            <div class="idea">
+              <div class="upload-your-idea">
+                <span class="upload">UPLOAD<br /></span>
+                <span class="your-idea-7">YOUR IDEA</span>
+              </div>
+              <div class="preview-image" id="imagePreview"></div>
+            </div>
+            <div class="location">
+              <div class="location-input">
+                <span class="location-title">ENTER THE<br />LOCATION</span>
+                <div class="coordinates-input">
+                  <div class="input-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="number" id="latitude" step="0.000001" placeholder="Enter latitude">
+                  </div>
+                  <div class="input-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="number" id="longitude" step="0.000001" placeholder="Enter longitude">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="run-container" onclick="runPipeline()">
+              <span class="run-text">RUN</span>
+            </div>
+          </div>
+          <div class="suggestions">
+            <div class="project-informations">
+              <span class="project">PROJECT<br /></span
+              ><span class="informations">INFORMATIONS</span>
+            </div>
+          </div>
+          <div class="simulation">
+            <div class="environmental-simulation">
+              <span class="environmental">ENVIRONMENTAL<br /></span>
+              <span class="simulation-9">SIMULATION</span>
+              <model-viewer
+                  id="modelViewer"
+                  camera-controls
+                  auto-rotate
+                  shadow-intensity="1"
+                  exposure="1"
+                  environment-image="neutral"
+                  style="width: 100%; height: 500px; min-height: 500px; display: block;"
+                  interaction-prompt="none">
+              </model-viewer>
+            </div>
+            <div class="loading-message" id="loadingMessage">
+              🚀 Running Pipeline... Please wait.
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="imageInput" accept="image/*" style="display: none;">
+    </div>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+    <script>
+    let selectedImage = null;
+
+    // Fix event listener for image upload
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('.idea').addEventListener('click', function() {
+            document.getElementById('imageInput').click();
+        });
+
+        document.getElementById('imageInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.idea').style.backgroundImage = `url(${e.target.result})`;
+                    document.querySelector('.idea').style.backgroundSize = 'cover';
+                    document.querySelector('.idea').style.backgroundPosition = 'center';
+                    document.querySelector('.upload-your-idea').style.display = 'none';
+                    selectedImage = file;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    function runPipeline() {
+        if (!selectedImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const latitude = document.getElementById('latitude').value;
+        const longitude = document.getElementById('longitude').value;
+
+        // Validate coordinate format
+        if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+            alert('Please enter valid latitude and longitude values.');
+            return;
+        }
+
+        // Validate coordinate ranges
+        if (latitude < -180 || latitude > 180 || longitude < -180 || longitude > 180) {
+            alert('Please enter valid coordinate ranges:\nLatitude: -90 to 90\nLongitude: -180 to 180');
+            return;
+        }
+
+        // Show loading state
+        document.querySelector('.run-text').textContent = 'RUNNING...';
+        document.getElementById('loadingMessage').style.display = 'block';
+
+        // Create FormData object and append all data at once
+        const formData = new FormData();
+        formData.append('image', selectedImage);
+        formData.append('latitude', latitude);
+        formData.append('longitude', longitude);
+
+        // Send everything in a single request
+        runPipelineRequest(formData)
+        .then(data => {
+            console.log('Pipeline response:', data);
+            if (data.status === 'success') {
+                console.log('Pipeline completed, loading GLB...');
+                setTimeout(loadGLB, 2000);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error running pipeline: ' + error);
+        })
+        .finally(() => {
+            document.querySelector('.run-text').textContent = 'RUN';
+            document.getElementById('loadingMessage').style.display = 'none';
+        });
+    }
+
+    async function runPipelineRequest(formData) {
+        try {
+            const response = await fetch('http://localhost:5000/run_pipeline', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Pipeline error:', error);
+            throw error;
+        }
+    }
+
+    function loadGLB() {
+        const modelViewer = document.getElementById('modelViewer');
+        if (!modelViewer) {
+            console.error('Model viewer element not found');
+            return;
+        }
+
+        // Clear previous model
+        modelViewer.src = '';
+        modelViewer.style.display = 'block';
+
+        // Set new source with cache-busting
+        const timestamp = Date.now();
+        const glbUrl = `http://localhost:5000/solar_radiation_example_image.glb?t=${timestamp}`;
+        console.log('Loading GLB from:', glbUrl);
+
+        modelViewer.addEventListener('load', () => {
+            console.log('Model loaded successfully');
+            // Force a resize to ensure proper rendering
+            window.dispatchEvent(new Event('resize'));
+        });
+
+        modelViewer.addEventListener('error', (error) => {
+            console.error('Error loading model:', error);
+            alert('Error loading 3D model');
+        });
+
+        modelViewer.src = glbUrl;
+    }
+</script>
+  </body>
+</html>

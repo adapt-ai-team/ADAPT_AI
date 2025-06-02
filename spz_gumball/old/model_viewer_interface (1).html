@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLB Model Viewer with Gumball Transform</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #scene-container {
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3b77db;
+        }
+        #model-input {
+            display: none;
+        }
+        .transform-btn {
+            margin-right: 5px;
+            margin-top: 10px;
+        }
+        .transform-mode {
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        #status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+        #loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+        }
+        #debug-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 500px;
+            max-height: 200px;
+            overflow: auto;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="scene-container"></div>
+        <div id="ui-panel">
+            <button id="upload-btn">Upload GLB Model</button>
+            <input type="file" id="model-input" accept=".glb,.gltf">
+            <button id="load-sample-btn">Load Sample Model</button>
+            
+            <div class="transform-mode">Transform Mode:</div>
+            <button class="transform-btn" id="translate-btn">Translate</button>
+            <button class="transform-btn" id="rotate-btn">Rotate</button>
+            <button class="transform-btn" id="scale-btn">Scale</button>
+            
+            <div id="status">No model loaded. Use the buttons above to load a model.</div>
+        </div>
+        <div id="loading-indicator">Loading model...</div>
+        <div id="debug-info"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r148/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    
+    <!-- Update to newer versions of the Three.js extensions -->
+    <script src="https://unpkg.com/three@0.148.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.148.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.148.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://unpkg.com/three@0.148.0/examples/js/utils/SkeletonUtils.js"></script>
+    
+    <script>
+        // Main application
+        const app = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            controls: null,
+            transformControls: null,
+            raycaster: new THREE.Raycaster(),
+            mouse: new THREE.Vector2(),
+            loadedModel: null,
+            selectedObject: null,
+            
+            init() {
+                try {
+                    this.log("Initializing application...");
+                    
+                    // Create scene
+                    this.scene = new THREE.Scene();
+                    this.scene.background = new THREE.Color(0xf0f0f0);
+                    
+                    // Create camera
+                    this.camera = new THREE.PerspectiveCamera(
+                        75, 
+                        window.innerWidth / window.innerHeight, 
+                        0.1, 
+                        1000
+                    );
+                    this.camera.position.z = 5;
+                    
+                    // Create renderer
+                    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.renderer.setPixelRatio(window.devicePixelRatio);
+                    this.renderer.shadowMap.enabled = true;
+                    document.getElementById('scene-container').appendChild(this.renderer.domElement);
+                    
+                    // Add lights
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                    this.scene.add(ambientLight);
+                    
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                    directionalLight.position.set(5, 10, 7.5);
+                    directionalLight.castShadow = true;
+                    this.scene.add(directionalLight);
+                    
+                    // Add reference objects for testing
+                    this.addReferenceObjects();
+                    
+                    // Add grid
+                    const gridHelper = new THREE.GridHelper(10, 10);
+                    this.scene.add(gridHelper);
+                    
+                    // Add orbit controls
+                    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                    this.controls.enableDamping = true;
+                    this.controls.dampingFactor = 0.05;
+                    
+                    // Add transform controls (gumball)
+                    this.transformControls = new THREE.TransformControls(this.camera, this.renderer.domElement);
+                    this.transformControls.addEventListener('dragging-changed', (event) => {
+                        this.controls.enabled = !event.value;
+                    });
+                    this.scene.add(this.transformControls);
+                    
+                    // Setup event listeners
+                    window.addEventListener('resize', () => this.onWindowResize());
+                    this.renderer.domElement.addEventListener('pointerdown', (event) => this.onMouseClick(event));
+                    
+                    // UI Event Listeners
+                    document.getElementById('upload-btn').addEventListener('click', () => {
+                        document.getElementById('model-input').click();
+                    });
+                    
+                    document.getElementById('model-input').addEventListener('change', (event) => {
+                        if (event.target.files.length > 0) {
+                            this.loadModel(event.target.files[0]);
+                        }
+                    });
+                    
+                    document.getElementById('load-sample-btn').addEventListener('click', () => {
+                        this.loadSampleModel();
+                    });
+                    
+                    document.getElementById('translate-btn').addEventListener('click', () => {
+                        i
