@@ -15,3 +15,5 @@ ladybug-core
 ladybug-geometry
 uvicorn
 supabase
+dotaenv
+torch
