@@ -1,18 +1,20 @@
 from fastapi import FastAPI
-from subprocess import run
+from subprocess import run, CalledProcessError
 import os
 from supabase import create_client
 from dotenv import load_dotenv
 
 app = FastAPI()
 
-# Load env variables from .env
+# Load environment variables
 load_dotenv()
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+# Initialize Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+# Constants
 OUTPUT_DIR = "spz_pipeline/pipeline_outputs"
 BUCKET_NAME = "pipeline_outputs"
 
@@ -22,31 +24,43 @@ def root():
 
 @app.post("/create")
 def create_pipeline():
+    """Run initial model generation and OSM alignment steps."""
     try:
         run(["python", "example.py"], check=True)
         run(["python", "osm_fetch_convert_to_3dm.py"], check=True)
         return {"status": "example.py and osm_fetch_convert_to_3dm.py completed"}
+    except CalledProcessError as e:
+        return {"error": f"Subprocess failed: {e}"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Unexpected error: {e}"}
 
 @app.post("/run")
 def run_pipeline():
+    """Run solar radiation analysis."""
     try:
         run(["python", "solar_new.py"], check=True)
         return {"status": "solar_new.py completed"}
+    except CalledProcessError as e:
+        return {"error": f"Subprocess failed: {e}"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Unexpected error: {e}"}
 
 @app.post("/save")
 def save_outputs():
+    """Upload all pipeline outputs to Supabase storage."""
     uploaded = 0
-    for root_dir, _, files in os.walk(OUTPUT_DIR):
-        for file in files:
-            local_path = os.path.join(root_dir, file)
-            rel_path = os.path.relpath(local_path, OUTPUT_DIR)
-            with open(local_path, "rb") as f:
-                supabase.storage.from_(BUCKET_NAME).upload(
-                    path=rel_path, file=f, file_options={"upsert": True}
-                )
-                uploaded += 1
-    return {"status": f"Uploaded {uploaded} files to Supabase."}
+    try:
+        for root_dir, _, files in os.walk(OUTPUT_DIR):
+            for file in files:
+                local_path = os.path.join(root_dir, file)
+                rel_path = os.path.relpath(local_path, OUTPUT_DIR)
+                with open(local_path, "rb") as f:
+                    supabase.storage.from_(BUCKET_NAME).upload(
+                        path=rel_path,
+                        file=f,
+                        file_options={"upsert": True}
+                    )
+                    uploaded += 1
+        return {"status": f"Uploaded {uploaded} files to Supabase."}
+    except Exception as e:
+        return {"error": f"Upload failed: {e}"}
