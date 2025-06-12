@@ -6,17 +6,6 @@ import os
 from supabase import create_client
 from dotenv import load_dotenv
 
-app = FastAPI()
-
-# Optional CORS (useful if your frontend calls this API)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Replace "*" with your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Load environment variables
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -25,48 +14,57 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     raise RuntimeError("❌ SUPABASE_URL or SUPABASE_SERVICE_KEY not set in environment variables.")
 
-# Initialize Supabase client
+# Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # Constants
 OUTPUT_DIR = "spz_pipeline/pipeline_outputs"
 BUCKET_NAME = "pipeline_outputs"
 
+# FastAPI app setup
+app = FastAPI()
+
+# Allow all origins for now (adjust in production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 def root():
     return {"status": "Server is running!"}
 
+
 @app.post("/create")
 def create_pipeline():
-    """Run initial model generation and OSM alignment steps."""
+    """Run model generation and OSM alignment steps."""
     try:
-        # Step 1: Run example.py
         result1 = subprocess.run(
-            ["python", "example.py"],
+            ["python", "spz/trellis-spz/code/example.py"],
             capture_output=True,
             text=True,
             check=True
         )
-
-        # Step 2: Run osm_fetch_convert_to_3dm.py
         result2 = subprocess.run(
-            ["python", "osm_fetch_convert_to_3dm.py"],
+            ["python", "spz_analysis2/osm_fetch_convert_to_3dm.py"],
             capture_output=True,
             text=True,
             check=True
         )
-
         return {
-            "status": "Pipeline create step completed.",
+            "status": "create step completed",
             "example_stdout": result1.stdout,
             "osm_stdout": result2.stdout
         }
-
     except CalledProcessError as e:
         return {
-            "error": f"Subprocess failed: {e}",
+            "error": "Subprocess failed",
             "stdout": e.stdout,
-            "stderr": e.stderr
+            "stderr": e.stderr,
+            "code": e.returncode
         }
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
@@ -74,23 +72,24 @@ def create_pipeline():
 
 @app.post("/run")
 def run_pipeline():
-    """Run solar radiation analysis."""
+    """Run solar analysis step."""
     try:
         result = subprocess.run(
-            ["python", "solar_new.py"],
+            ["python", "spz_analysis2/solar_new.py"],
             capture_output=True,
             text=True,
             check=True
         )
         return {
-            "status": "Solar analysis completed.",
+            "status": "solar analysis completed",
             "stdout": result.stdout
         }
     except CalledProcessError as e:
         return {
-            "error": f"Subprocess failed: {e}",
+            "error": "Subprocess failed",
             "stdout": e.stdout,
-            "stderr": e.stderr
+            "stderr": e.stderr,
+            "code": e.returncode
         }
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
@@ -98,7 +97,7 @@ def run_pipeline():
 
 @app.post("/save")
 def save_outputs():
-    """Upload all pipeline outputs to Supabase storage."""
+    """Upload pipeline outputs to Supabase storage."""
     uploaded = 0
     try:
         for root_dir, _, files in os.walk(OUTPUT_DIR):
