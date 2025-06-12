@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+imageio
+Pillow
+numpy
+trimesh
+shapely
+pyproj
+requests
+rhino3dm
+tqdm
+matplotlib
+python-dotenv
+ladybug-core
+ladybug-geometry
+uvicorn
