@@ -39,11 +39,15 @@ def root():
 
 
 @app.post("/create")
-def create_pipeline(request: Request):
-    """Run create_button.py to perform 3D model + OSM alignment"""
+def create_pipeline():
+    """Run model generation and OSM alignment steps."""
     try:
+        # Optional: Debug check to make sure the file exists
+        if not os.path.exists("create_button.py"):
+            raise RuntimeError("❌ create_button.py not found at root level!")
+
         result = subprocess.run(
-            ["python", "spz_analysis2/create_button.py"],
+            ["python", "create_button.py"],
             capture_output=True,
             text=True,
             check=True
@@ -61,6 +65,7 @@ def create_pipeline(request: Request):
         }
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
+
 
 
 @app.post("/run")
