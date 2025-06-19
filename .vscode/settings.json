@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./spz_pipeline/pipeline_outputs"
+    ]
+}
