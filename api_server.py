@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from subprocess import run, CalledProcessError
 import subprocess
@@ -39,25 +39,18 @@ def root():
 
 
 @app.post("/create")
-def create_pipeline():
-    """Run model generation and OSM alignment steps."""
+def create_pipeline(request: Request):
+    """Run create_button.py to perform 3D model + OSM alignment"""
     try:
-        result1 = subprocess.run(
-            ["python", "spz/trellis-spz/code/example.py"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        result2 = subprocess.run(
-            ["python", "spz_analysis2/osm_fetch_convert_to_3dm.py"],
+        result = subprocess.run(
+            ["python", "spz_analysis2/create_button.py"],
             capture_output=True,
             text=True,
             check=True
         )
         return {
             "status": "create step completed",
-            "example_stdout": result1.stdout,
-            "osm_stdout": result2.stdout
+            "stdout": result.stdout
         }
     except CalledProcessError as e:
         return {
