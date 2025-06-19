@@ -3,8 +3,16 @@ from pydantic import BaseModel
 from trellis_api import run_trellis_generation
 from osm_fetch_convert_to_3dm import run_osm_pipeline  # You’ll define this in that file
 import uvicorn
+import sys
+import os
 
 app = FastAPI()
+
+# Add the folder containing trellis_api.py to sys.path
+TRELLIS_PATH = os.path.join(os.path.dirname(__file__), "spz_pipeline", "pipeline_outputs")
+sys.path.append(TRELLIS_PATH)
+
+from trellis_api import run_trellis_generation
 
 class CreateRequest(BaseModel):
     user_id: str
