@@ -6,9 +6,7 @@ import os
 # --- Setup environment path ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
-
-# Optional: If these modules are in subfolders, you may need to add those too
-# sys.path.append(os.path.join(BASE_DIR, "spz_pipeline", "pipeline_outputs"))
+sys.path.append(os.path.join(BASE_DIR, "spz_analysis2"))
 
 # --- Import pipeline functions ---
 from trellis_api import run_trellis_generation
