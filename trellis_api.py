@@ -6,9 +6,9 @@ import replicate
 load_dotenv()
 
 # Get API token from environment
-api_token = os.getenv("REPLICATE_API_TOKEN")
+api_token = os.getenv("REPLICATE_API")
 if not api_token:
-    raise ValueError("REPLICATE_API_TOKEN is not set")
+    raise ValueError("REPLICATE_API is not set")
 
 # Initialize client
 client = replicate.Client(api_token=api_token)
