@@ -10,7 +10,7 @@ sys.path.append(os.path.join(BASE_DIR, "spz_analysis2"))
 
 # --- Import pipeline functions ---
 from trellis_api import run_trellis_generation
-from osm_fetch_convert_to_3dm import run_osm_pipeline  # This must be defined as a function
+from osm_fetch_convert_to_3dm import run_osm_pipeline
 
 # --- FastAPI App ---
 app = FastAPI()
