@@ -1,6 +1,0 @@
-D:
-  ADAPT_AI
-    spz
-      trellis-spz
-        code
-          example.py

@@ -385,3 +385,45 @@ if __name__ == "__main__":
             print(f"✅ Merged model also exported as GLB: {glb_output_path}")
         except Exception as e:
             print(f"❌ Failed to export GLB: {e}")
+def run_osm_pipeline(user_id: str, project_id: str):
+    # Set global user/project context
+    LAT, LON = fetch_latlon_from_supabase(user_id, project_id)
+    print(f"📍 Coordinates: {LAT}, {LON}")
+
+    REF_X, REF_Y = latlon_to_utm(LAT, LON)
+    REF_Z = 0
+    print(f"📍 UTM Reference: ({REF_X}, {REF_Y})")
+
+    # Step 1: Fetch and parse OSM data
+    osm_data = fetch_osm_data(LAT, LON, RADIUS)
+    if not osm_data:
+        raise Exception("❌ Failed to fetch OSM data.")
+
+    buildings = parse_osm_data(osm_data)
+    if not buildings:
+        raise Exception("❌ No buildings parsed from OSM.")
+
+    # Step 2: Create 3D OSM scene
+    scene_osm = create_3d_model(buildings, scale_factor=10)
+
+    # Step 3: Process user GLB and align it to OSM
+    scene_input = process_example_image(user_id, project_id, scene_osm)
+
+    # Step 4: Merge and export
+    merged_scene = trimesh.Scene()
+    merged_scene.add_geometry(scene_osm)
+    merged_scene.add_geometry(scene_input)
+
+    # Export merged model to Supabase
+    from supabase import create_client
+    supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+    # Export merged .glb
+    with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as tmp_glb:
+        merged_scene.export(tmp_glb.name)
+        tmp_glb.flush()
+        with open(tmp_glb.name, "rb") as f:
+            path = f"{user_id}/{project_id}/merged_model.glb"
+            supabase.storage.from_("osm-merged").upload(path, f, file_options={"content-type": "model/gltf-binary"})
+        os.remove(tmp_glb.name)
+        print(f"✅ Merged model uploaded to: osm-merged/{user_id}/{project_id}/merged_model.glb")

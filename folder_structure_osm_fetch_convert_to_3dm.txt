@@ -1,4 +1,0 @@
-D:
-  ADAPT_AI
-    spz_analysis2
-      osm_fetch_convert_to_3dm.py

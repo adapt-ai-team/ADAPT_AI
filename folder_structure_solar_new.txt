@@ -1,4 +1,0 @@
-D:
-  ADAPT_AI
-    spz_analysis2
-      solar_new.py
