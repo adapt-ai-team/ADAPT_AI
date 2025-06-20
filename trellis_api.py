@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import replicate
+from supabase import create_client, Client
 
 # Load environment variables
 load_dotenv()
