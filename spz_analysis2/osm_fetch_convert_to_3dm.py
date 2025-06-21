@@ -28,13 +28,6 @@ def resolve_path(relative_path):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, relative_path)
 
-# 📂 File paths - convert to relative paths
-# Supabase storage paths (bucket + key per file)
-INPUT_PATH = f"{user_id}/{project_id}/model.glb"
-FIXED_PATH = f"{user_id}/{project_id}/model_fixed.glb"
-
-MERGED_PATH = f"{user_id}/{project_id}/merged_model.glb"
-
 
 def fetch_latlon_from_supabase(user_id: str, project_id: str):
     path = f"{user_id}/{project_id}/latlon.txt"
