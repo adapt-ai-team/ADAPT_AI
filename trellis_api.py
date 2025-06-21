@@ -37,7 +37,7 @@ def run_trellis_generation(input_image_path: str, output_glb_path: str):
     print(f"🌐 Input image public URL: {public_url}")
 
     # 2. Call Trellis model via Replicate
-    output = replicate_client.run(
+    output = client.run(
         "firtoz/trellis:e8f6c45206993f297372f5436b90350817bd9b4a0d52d2a76df50c1c8afa2b3c",
         input={"images": [public_url], "generate_model": True}
     )
