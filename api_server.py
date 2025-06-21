@@ -5,7 +5,7 @@ import subprocess
 import os
 from supabase import create_client
 from dotenv import load_dotenv
-from create_button import app
+from create_button import app as button_app
 
 # Load environment variables
 load_dotenv()
@@ -33,6 +33,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the button app's routes
+app.mount("/button", button_app)
 
 @app.get("/")
 def root():
@@ -113,6 +116,11 @@ def save_outputs():
         return {"status": f"✅ Uploaded {uploaded} files to Supabase."}
     except Exception as e:
         return {"error": f"❌ Upload failed: {e}"}
+
+# Test route to check if the server is working
+@app.get("/test")
+def test_route():
+    return {"message": "This works!"}
 
 # This re-exports the app from create_button.py for Render
 

@@ -3,6 +3,8 @@ from pydantic import BaseModel
 import sys
 import os
 import traceback
+import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 # --- Setup environment path ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,11 +16,37 @@ from trellis_api import run_trellis_generation
 from osm_fetch_convert_to_3dm import run_osm_pipeline
 # You'll later import: from solar_new import run_solar_analysis
 
+# --- Logging Setup ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
+# --- Validate Environment Variables at Startup ---
+REQUIRED_ENV_VARS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+missing_vars = [var for var in REQUIRED_ENV_VARS if var not in os.environ]
+if missing_vars:
+    raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+# --- Supabase Client Singleton ---
+from supabase import create_client
+SUPABASE_CLIENT = create_client(
+    os.environ["SUPABASE_URL"],
+    os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+)
+
 # --- FastAPI App ---
 app = FastAPI(
     title="ADAPT AI API",
     description="API for 3D model generation and analysis",
     version="1.0.0"
+)
+
+# --- CORS Middleware (allow all origins for now, restrict in prod) ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Request Schemas ---
@@ -41,28 +69,23 @@ def trigger_pipeline(data: CreateRequest):
     image_url = data.image_url
 
     try:
-        print(f"🚀 Starting pipeline for user: {user_id}, project: {project_id}")
+        logger.info(f"🚀 Starting pipeline for user: {user_id}, project: {project_id}")
 
         # Step 1: Trellis Model Generation
         output_glb_path = f"{user_id}/{project_id}/model.glb"
         run_trellis_generation(image_url, output_glb_path)
-        print("✅ Trellis model generated and uploaded.")
+        logger.info("✅ Trellis model generated and uploaded.")
 
         # Step 2: OSM Alignment + Merge
         run_osm_pipeline(user_id, project_id)
-        print("✅ OSM alignment and merge complete.")
+        logger.info("✅ OSM alignment and merge complete.")
 
-        # Add debugging to check for files in Supabase
+        # --- Improved Supabase file listing and logging ---
         try:
-            from supabase import create_client
-            supabase = create_client(
-                os.environ["SUPABASE_URL"],
-                os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-            )
-            files = supabase.storage.from_("2d-to-3d").list(f"{user_id}/{project_id}")
-            print(f"📋 Files in 2d-to-3d bucket: {files}")
+            files = SUPABASE_CLIENT.storage.from_("2d-to-3d").list(f"{user_id}/{project_id}")
+            logger.info(f"Files in 2d-to-3d bucket for {user_id}/{project_id}: {files}")
         except Exception as e:
-            print(f"⚠️ Failed to list files: {e}")
+            logger.error(f"Failed to list files in Supabase: {e}")
 
         return {
             "status": "success",
@@ -70,8 +93,8 @@ def trigger_pipeline(data: CreateRequest):
         }
 
     except Exception as e:
-        print(f"❌ Pipeline failed: {e}")
-        print(traceback.format_exc())  # Print full stack trace
+        logger.error(f"Pipeline failed: {e}")
+        logger.error(traceback.format_exc())  # Print full stack trace
         return {"status": "error", "message": str(e)}
 
 # --- Solar Analysis Route (for future use) ---
@@ -82,7 +105,7 @@ def solar_analysis(data: SaveRequest):
     project_id = data.project_id
 
     try:
-        print(f"☀️ Starting solar analysis for user: {user_id}, project: {project_id}")
+        logger.info(f"☀️ Starting solar analysis for user: {user_id}, project: {project_id}")
         
         # This will be implemented later with solar_new.py
         # run_solar_analysis(user_id, project_id)
@@ -94,8 +117,8 @@ def solar_analysis(data: SaveRequest):
         }
 
     except Exception as e:
-        print(f"❌ Solar analysis failed: {e}")
-        print(traceback.format_exc())
+        logger.error(f"❌ Solar analysis failed: {e}")
+        logger.error(traceback.format_exc())
         return {"status": "error", "message": str(e)}
 
 # --- Home Route ---
