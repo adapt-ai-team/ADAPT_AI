@@ -42,6 +42,18 @@ def run_trellis_generation(input_image, output_glb_path: str):
             raise Exception(f"❌ Failed to get public URL for image: {input_image}")
         print(f"🌐 Generated public URL: {public_url}")
 
+    # If input_image is a path, ensure it is in the format user_id/project_id/image_filename
+    if not input_image.startswith("http"):
+        # Enforce folder structure for output to match input
+        # input_image: user_id/project_id/image_filename
+        # output_glb_path: user_id/project_id/model.glb
+        input_parts = input_image.split("/")
+        if len(input_parts) >= 3:
+            user_id, project_id = input_parts[0], input_parts[1]
+            output_glb_path = f"{user_id}/{project_id}/model.glb"
+        else:
+            raise Exception(f"❌ input_image path must be user_id/project_id/image_filename, got: {input_image}")
+
     # 2. Run Trellis model via Replicate
     try:
         output = client.run(
@@ -87,6 +99,14 @@ def run_trellis_generation(input_image, output_glb_path: str):
         tmp_file.write(response.content)
         tmp_file.flush()
         tmp_path = tmp_file.name
+
+    # Ensure the folder structure exists in Supabase (Supabase auto-creates folders on upload, but we can check)
+    folder_path = os.path.dirname(output_glb_path)
+    if folder_path:
+        try:
+            supabase.storage.from_("2d-to-3d").list(folder_path)
+        except Exception:
+            pass  # Supabase auto-creates folders on upload
 
     print(f"📦 Uploading to Supabase at 2d-to-3d/{output_glb_path}")
     try:
