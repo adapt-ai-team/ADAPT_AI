@@ -5,16 +5,22 @@ import trimesh
 import rhino3dm
 import numpy as np
 import os
-from flask import Flask, request, jsonify
 import sys
 import tempfile
-import trimesh
 from supabase import create_client, Client
 
+# Constants and bucket names that DON'T depend on user_id/project_id
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+# Bucket names (no user_id/project_id)
+LATLON_BUCKET = "location"
+INPUT_BUCKET = "2d-to-3d"
+MERGED_BUCKET = "osm-merged"
+
+# Constants
+RADIUS = 250  # Max area in meters for OSM data fetch
 
 # Add path resolver after imports
 def resolve_path(relative_path):
@@ -24,19 +30,10 @@ def resolve_path(relative_path):
 
 # 📂 File paths - convert to relative paths
 # Supabase storage paths (bucket + key per file)
-LATLON_BUCKET = "location"
-
-INPUT_BUCKET = "2d-to-3d"
 INPUT_PATH = f"{user_id}/{project_id}/model.glb"
 FIXED_PATH = f"{user_id}/{project_id}/model_fixed.glb"
 
-MERGED_BUCKET = "osm-merged"
 MERGED_PATH = f"{user_id}/{project_id}/merged_model.glb"
-
-
-# 📍 Constants
-RADIUS = 250  # Max area in meters for OSM data fetch
-
 
 
 def fetch_latlon_from_supabase(user_id: str, project_id: str):
@@ -454,6 +451,11 @@ if __name__ == "__main__":
             print(f"❌ Failed to export GLB: {e}")
 
 def run_osm_pipeline(user_id: str, project_id: str):
+    # Define paths here where user_id and project_id are known
+    input_path = f"{user_id}/{project_id}/model.glb"
+    fixed_path = f"{user_id}/{project_id}/model_fixed.glb"
+    merged_path = f"{user_id}/{project_id}/merged_model.glb"
+    
     lat, lon = fetch_latlon_from_supabase(user_id, project_id)
     osm_data = fetch_osm_data(lat, lon, RADIUS)
     buildings = parse_osm_data(osm_data)
