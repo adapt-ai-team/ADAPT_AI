@@ -19,31 +19,35 @@ app = FastAPI()
 class CreateRequest(BaseModel):
     user_id: str
     project_id: str
-
+    image_url: str  # Optional, if you want to pass the image URL directly
 # --- API Route ---
 @app.post("/create")
 def trigger_pipeline(data: CreateRequest):
     user_id = data.user_id
     project_id = data.project_id
+    image_url = data.image_url
 
     try:
         print(f"🚀 Starting pipeline for user: {user_id}, project: {project_id}")
 
         # Step 1: Trellis Model Generation
-        input_image_path = f"{user_id}/{project_id}/input.jpg"
         output_glb_path = f"{user_id}/{project_id}/model.glb"
-        run_trellis_generation(input_image_path, output_glb_path)
+        run_trellis_generation(image_url, output_glb_path)
         print("✅ Trellis model generated and uploaded.")
 
         # Step 2: OSM Alignment + Merge
         run_osm_pipeline(user_id, project_id)
         print("✅ OSM alignment and merge complete.")
 
-        return {"status": "success", "message": "Pipeline completed successfully."}
+        return {
+            "status": "success",
+            "message": f"Pipeline completed for user {user_id}, project {project_id}."
+        }
 
     except Exception as e:
         print(f"❌ Pipeline failed: {e}")
-        return {"status": "error", "message": str(e)}  
+        return {"status": "error", "message": str(e)}
+
 
 # Optional: local dev entry point
 if __name__ == "__main__":
