@@ -5,6 +5,7 @@ import subprocess
 import os
 from supabase import create_client
 from dotenv import load_dotenv
+from create_button import app
 
 # Load environment variables
 load_dotenv()
@@ -112,3 +113,9 @@ def save_outputs():
         return {"status": f"✅ Uploaded {uploaded} files to Supabase."}
     except Exception as e:
         return {"error": f"❌ Upload failed: {e}"}
+
+# This re-exports the app from create_button.py for Render
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=10000)
