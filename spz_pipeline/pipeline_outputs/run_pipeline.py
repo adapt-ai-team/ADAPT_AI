@@ -100,13 +100,6 @@ def create_step():
         print(f"📸 Image downloaded to: {local_image_path}")
         print(f"📍 Coordinates saved to: {local_latlon_path}")
 
-        # Run Trellis API
-        subprocess.run(
-            ['conda', 'run', '-n', 'trellis', 'python', EXAMPLE_SCRIPT, '--input', local_image_path],
-            check=True,
-            cwd=PIPELINE_FOLDER
-        )
-
         # Run OSM conversion
         subprocess.run(
             ['conda', 'run', '-n', 'ladybug_env', 'python', CONVERT_SCRIPT, latitude, longitude],

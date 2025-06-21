@@ -21,21 +21,26 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     raise ValueError("❌ Supabase environment variables not set.")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-def run_trellis_generation(input_image_path: str, output_glb_path: str):
+def run_trellis_generation(input_image, output_glb_path: str):
     """
-    Given a Supabase path to an input image, runs Trellis via Replicate and uploads the output .glb to Supabase.
-
+    Runs Trellis model on an image and uploads the output .glb.
+    
     Args:
-        input_image_path (str): e.g., 'user_id/project_id/input.jpg'
-        output_glb_path (str): e.g., 'user_id/project_id/model.glb'
+        input_image (str): Either a Supabase path or a full image URL
+        output_glb_path (str): Path for output like 'user_id/project_id/model.glb'
     """
-    print(f"📥 Starting Trellis generation: {input_image_path} → {output_glb_path}")
-
-    # 1. Get public URL of the image
-    public_url = supabase.storage.from_("image-generation").get_public_url(input_image_path)
-    if not public_url:
-        raise Exception(f"❌ Failed to get public URL for image: {input_image_path}")
-    print(f"🌐 Image public URL: {public_url}")
+    print(f"📥 Starting Trellis generation: {input_image} → {output_glb_path}")
+    
+    # Handle both paths and URLs
+    if input_image.startswith("http"):
+        public_url = input_image
+        print(f"🌐 Using provided image URL directly")
+    else:
+        # If it's a path, get the URL
+        public_url = supabase.storage.from_("image-generation").get_public_url(input_image)
+        if not public_url:
+            raise Exception(f"❌ Failed to get public URL for image: {input_image}")
+        print(f"🌐 Generated public URL: {public_url}")
 
     # 2. Run Trellis model via Replicate
     try:
@@ -49,16 +54,26 @@ def run_trellis_generation(input_image_path: str, output_glb_path: str):
 
     # 3. Parse returned model file URL
     model_url = None
+    
+    print(f"🔍 Inspecting output type: {type(output)}")
+    
     if isinstance(output, dict):
         model_file = output.get("model_file")
-        if model_file and isinstance(model_file, dict):
+        print(f"🔍 Model file type: {type(model_file)}")
+        
+        # Handle FileOutput object from replicate
+        if hasattr(model_file, 'url'):  # Check if it has .url attribute
+            model_url = model_file.url
+            print(f"📄 Found URL from FileOutput: {model_url}")
+        elif model_file and isinstance(model_file, dict):
             model_url = model_file.get("url")
     elif isinstance(output, list) and len(output) > 0:
         model_url = output[0]
     elif isinstance(output, str):
         model_url = output
-
+        
     if not model_url:
+        print(f"❌ DEBUG - Full output: {output}")
         raise Exception("❌ No valid model_file URL returned from Trellis")
 
     # 4. Download the .glb file
@@ -88,5 +103,13 @@ def run_trellis_generation(input_image_path: str, output_glb_path: str):
             )
     finally:
         os.unlink(tmp_path)
+
+    # After upload completes
+    try:
+        # List files in directory to verify upload
+        files = supabase.storage.from_("2d-to-3d").list(os.path.dirname(output_glb_path))
+        print(f"📋 Files in directory after upload: {files}")
+    except Exception as e:
+        print(f"⚠️ Error checking files: {e}")
 
     print(f"✅ Trellis model uploaded successfully: 2d-to-3d/{output_glb_path}")
