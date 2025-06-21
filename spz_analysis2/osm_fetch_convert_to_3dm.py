@@ -451,10 +451,7 @@ if __name__ == "__main__":
             print(f"❌ Failed to export GLB: {e}")
 
 def run_osm_pipeline(user_id: str, project_id: str):
-    # Define paths here where user_id and project_id are known
-    input_path = f"{user_id}/{project_id}/model.glb"
-    fixed_path = f"{user_id}/{project_id}/model_fixed.glb"
-    merged_path = f"{user_id}/{project_id}/merged_model.glb"
+
     
     lat, lon = fetch_latlon_from_supabase(user_id, project_id)
     osm_data = fetch_osm_data(lat, lon, RADIUS)
