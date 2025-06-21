@@ -25,7 +25,6 @@ def resolve_path(relative_path):
 # 📂 File paths - convert to relative paths
 # Supabase storage paths (bucket + key per file)
 LATLON_BUCKET = "location"
-LATLON_PATH = f"{user_id}/{project_id}/latlon.txt"
 
 INPUT_BUCKET = "2d-to-3d"
 INPUT_PATH = f"{user_id}/{project_id}/model.glb"
