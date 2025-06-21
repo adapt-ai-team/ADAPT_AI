@@ -73,11 +73,23 @@ def trigger_pipeline(data: CreateRequest):
 
         # Step 1: Trellis Model Generation
         output_glb_path = f"{user_id}/{project_id}/model.glb"
-        run_trellis_generation(image_url, output_glb_path)
+        try:
+            trellis_result = run_trellis_generation(image_url, output_glb_path)
+            logger.info(f"Trellis generation result: {trellis_result}")
+        except Exception as e:
+            logger.error(f"Trellis generation failed: {e}")
+            logger.error(traceback.format_exc())
+            return {"status": "error", "message": f"Trellis generation failed: {e}"}
         logger.info("✅ Trellis model generated and uploaded.")
 
         # Step 2: OSM Alignment + Merge
-        run_osm_pipeline(user_id, project_id)
+        try:
+            osm_result = run_osm_pipeline(user_id, project_id)
+            logger.info(f"OSM pipeline result: {osm_result}")
+        except Exception as e:
+            logger.error(f"OSM pipeline failed: {e}")
+            logger.error(traceback.format_exc())
+            return {"status": "error", "message": f"OSM pipeline failed: {e}"}
         logger.info("✅ OSM alignment and merge complete.")
 
         # --- Improved Supabase file listing and logging ---
@@ -89,7 +101,10 @@ def trigger_pipeline(data: CreateRequest):
 
         return {
             "status": "success",
-            "message": f"Pipeline completed for user {user_id}, project {project_id}."
+            "message": f"Pipeline completed for user {user_id}, project {project_id}.",
+            "trellis_result": str(trellis_result),
+            "osm_result": str(osm_result),
+            "files": str(files) if 'files' in locals() else None
         }
 
     except Exception as e:
