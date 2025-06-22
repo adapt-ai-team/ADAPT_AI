@@ -149,39 +149,107 @@ def upload_merged_model(scene: trimesh.Scene, user_id: str, project_id: str):
         print(f"✅ Uploaded merged_model.glb to {MERGED_BUCKET}/{path}")
 
 def export_scene_to_3dm_and_upload(scene, user_id: str, project_id: str):
+    print(f"🔄 Starting 3DM export process...")
     model = rhino3dm.File3dm()
+    
+    # Process each mesh with better error handling
     for mesh_name, geometry in scene.geometry.items():
-        if not isinstance(geometry, trimesh.Trimesh):
-            continue
-        rhino_mesh = rhino3dm.Mesh()
-        for v in geometry.vertices:
-            rhino_mesh.Vertices.Add(float(v[0]), float(v[1]), float(v[2]))
-        for face in geometry.faces:
-            if len(face) == 3:
-                rhino_mesh.Faces.AddFace(int(face[0]), int(face[1]), int(face[2]))
-            elif len(face) == 4:
-                rhino_mesh.Faces.AddFace(int(face[0]), int(face[1]), int(face[2]), int(face[3]))
-        rhino_mesh.Normals.ComputeNormals()
-        rhino_mesh.Compact()
-        model.Objects.AddMesh(rhino_mesh)
+        try:
+            if not isinstance(geometry, trimesh.Trimesh):
+                print(f"⚠️ Skipping non-mesh object: {mesh_name}")
+                continue
+                
+            print(f"📊 Processing mesh '{mesh_name}': {len(geometry.vertices)} vertices, {len(geometry.faces)} faces")
+            
+            # Skip excessively large meshes
+            if len(geometry.vertices) > 1000000:  # 1 million vertex limit
+                print(f"⚠️ Mesh too large, skipping: {len(geometry.vertices)} vertices")
+                continue
+                
+            # Create Rhino mesh
+            rhino_mesh = rhino3dm.Mesh()
+            
+            # Add vertices
+            for v in geometry.vertices:
+                rhino_mesh.Vertices.Add(float(v[0]), float(v[1]), float(v[2]))
+            
+            # Add faces with bounds checking
+            face_count = 0
+            for face in geometry.faces:
+                max_index = max(face)
+                if max_index >= len(geometry.vertices):
+                    continue  # Skip faces with out-of-bounds indices
+                
+                if len(face) == 3:
+                    rhino_mesh.Faces.AddFace(int(face[0]), int(face[1]), int(face[2]))
+                    face_count += 1
+                elif len(face) == 4:
+                    rhino_mesh.Faces.AddFace(int(face[0]), int(face[1]), int(face[2]), int(face[3]))
+                    face_count += 1
+            
+            print(f"✅ Added {face_count} faces to Rhino mesh")
+            
+            # Compute normals and add mesh to model
+            rhino_mesh.Normals.ComputeNormals()
+            rhino_mesh.Compact()
+            model.Objects.AddMesh(rhino_mesh)
+            
+        except Exception as e:
+            print(f"❌ Error processing mesh '{mesh_name}': {e}")
+    
+    # Use a more reliable approach for temporary file
+    try:
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, "merged_model.3dm")
         
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".3dm") as tmp_file:
-        model.Write(tmp_file.name, 5)
+        print(f"📝 Writing 3DM file to: {temp_path}")
+        model.Write(temp_path, 5)
+        
+        # Verify file was created and has content
+        if not os.path.exists(temp_path):
+            raise Exception("File was not created")
+            
+        file_size = os.path.getsize(temp_path)
+        print(f"📋 3DM file size: {file_size / 1024:.1f} KB")
+        
+        if file_size == 0:
+            raise Exception("File is empty (0 bytes)")
+        
+        # Upload with explicit file open
         path = f"{user_id}/{project_id}/merged_model.3dm"
+        print(f"📤 Uploading to solar-radiation/{path}")
         
         try:
             # Remove existing file if present
             supabase.storage.from_("solar-radiation").remove([path])
-        except Exception:
-            pass  # Safe to ignore if file doesn't exist
-            
-        # Upload the new model
-        supabase.storage.from_("solar-radiation").upload(
-            path,
-            tmp_file.name,
-            file_options={"content-type": "application/octet-stream"}
-        )
-        print(f"✅ Uploaded merged_model.3dm to solar-radiation/{path}")
+            print(f"🗑️ Removed existing file (if any)")
+        except Exception as e:
+            print(f"⚠️ Note: Could not remove existing file: {e}")
+        
+        # Upload with explicit file opening
+        with open(temp_path, "rb") as f:
+            result = supabase.storage.from_("solar-radiation").upload(
+                path,
+                f,
+                file_options={"content-type": "application/octet-stream"}
+            )
+            print(f"✅ Upload successful: {result}")
+        
+        # Get public URL to verify
+        url = supabase.storage.from_("solar-radiation").get_public_url(path)
+        print(f"🌐 Public URL: {url}")
+        
+    except Exception as e:
+        print(f"❌ Error during 3DM export or upload: {str(e)}")
+        raise
+    
+    finally:
+        # Clean up temporary directory
+        try:
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass  # At least we tried
 
 def process_example_image(user_id: str, project_id: str, osm_scene: trimesh.Scene, up_axis=2):
     """Process example_image.glb to match OSM model position and scale."""
