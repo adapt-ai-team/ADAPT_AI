@@ -5,6 +5,7 @@ import os
 import traceback
 import logging
 from fastapi.middleware.cors import CORSMiddleware
+import argparse
 
 # --- Setup environment path ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -145,4 +146,44 @@ def root():
         "endpoints": ["/create", "/save"],
         "version": "1.0.0"
     }
+
+def run_pipeline(user_id, project_id, image_url):
+    # This is the core logic from trigger_pipeline, but as a function
+    try:
+        logger.info(f"🚀 Starting pipeline for user: {user_id}, project: {project_id}")
+
+        output_glb_path = f"{user_id}/{project_id}/model.glb"
+        trellis_result = run_trellis_generation(image_url, output_glb_path)
+        logger.info(f"Trellis generation result: {trellis_result}")
+
+        osm_result = run_osm_pipeline(user_id, project_id)
+        logger.info(f"OSM pipeline result: {osm_result}")
+
+        files = SUPABASE_CLIENT.storage.from_("2d-to-3d").list(f"{user_id}/{project_id}")
+        logger.info(f"Files in 2d-to-3d bucket for {user_id}/{project_id}: {files}")
+
+        return {
+            "status": "success",
+            "message": f"Pipeline completed for user {user_id}, project {project_id}.",
+            "trellis_result": str(trellis_result),
+            "osm_result": str(osm_result),
+            "files": str(files) if files else None
+        }
+    except Exception as e:
+        logger.error(f"Pipeline failed: {e}")
+        logger.error(traceback.format_exc())
+        return {"status": "error", "message": str(e)}
+
+def main():
+    parser = argparse.ArgumentParser(description="Run the 3D generation pipeline")
+    parser.add_argument("--user_id", type=str, required=True, help="User ID")
+    parser.add_argument("--project_id", type=str, required=True, help="Project ID")
+    parser.add_argument("--image_url", type=str, required=True, help="Image URL")
+    args = parser.parse_args()
+
+    result = run_pipeline(args.user_id, args.project_id, args.image_url)
+    print(result)
+
+if __name__ == "__main__":
+    main()
 
