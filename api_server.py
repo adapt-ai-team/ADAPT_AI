@@ -5,6 +5,7 @@ import subprocess
 import os
 from supabase import create_client
 from dotenv import load_dotenv
+from pydantic import BaseModel
 from create_button import app as button_app
 
 # Load environment variables
@@ -41,17 +42,28 @@ app.mount("/button", button_app)
 def root():
     return {"status": "Server is running!"}
 
+# Input schema for /create
+class CreateInput(BaseModel):
+    user_id: str
+    project_id: str
+    image_url: str
 
 @app.post("/create")
-def create_pipeline():
+def create_pipeline(data: CreateInput):
     """Run model generation and OSM alignment steps."""
     try:
-        # Optional: Debug check to make sure the file exists
+        print(f"📩 Received /create POST: {data}")
+
         if not os.path.exists("create_button.py"):
             raise RuntimeError("❌ create_button.py not found at root level!")
 
         result = subprocess.run(
-            ["python", "create_button.py"],
+            [
+                "python", "create_button.py",
+                "--user_id", data.user_id,
+                "--project_id", data.project_id,
+                "--image_url", data.image_url
+            ],
             capture_output=True,
             text=True,
             check=True
@@ -69,8 +81,6 @@ def create_pipeline():
         }
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
-
-
 
 @app.post("/run")
 def run_pipeline():
@@ -95,7 +105,6 @@ def run_pipeline():
         }
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
-
 
 @app.post("/save")
 def save_outputs():
@@ -122,8 +131,7 @@ def save_outputs():
 def test_route():
     return {"message": "This works!"}
 
-# This re-exports the app from create_button.py for Render
-
+# Entry point
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=10000)
