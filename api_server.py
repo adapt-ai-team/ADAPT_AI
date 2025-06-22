@@ -7,6 +7,15 @@ from supabase import create_client
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from create_button import app as button_app
+from pydantic import BaseModel
+import json
+
+
+class RunInput(BaseModel):
+    user_id: str
+    project_id: str
+    epw_url: str
+    mesh_url: str
 
 # Load environment variables
 load_dotenv()
@@ -14,7 +23,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("❌ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set in environment variables.")
+    raise RuntimeError(" SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set in environment variables.")
 
 # Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -48,6 +57,13 @@ class CreateInput(BaseModel):
     project_id: str
     image_url: str
 
+# Input schema for /run
+class RunInput(BaseModel):
+    user_id: str
+    project_id: str
+    epw_url: str
+    mesh_url: str
+
 @app.post("/create")
 def create_pipeline(data: CreateInput):
     """Run model generation and OSM alignment steps."""
@@ -55,7 +71,7 @@ def create_pipeline(data: CreateInput):
         print(f"📩 Received /create POST: {data}")
 
         if not os.path.exists("create_button.py"):
-            raise RuntimeError("❌ create_button.py not found at root level!")
+            raise RuntimeError(" create_button.py not found at root level!")
 
         result = subprocess.run(
             [
@@ -83,11 +99,21 @@ def create_pipeline(data: CreateInput):
         return {"error": f"Unexpected error: {e}"}
 
 @app.post("/run")
-def run_pipeline():
-    """Run solar analysis step."""
+def run_pipeline(data: RunInput):
+    """Run solar analysis pipeline using user/project and input URLs."""
     try:
+        json_arg = json.dumps({
+            "user_id": data.user_id,
+            "project_id": data.project_id,
+            "epw_url": data.epw_url,
+            "mesh_url": data.mesh_url
+        })
+
         result = subprocess.run(
-            ["python", "spz_analysis2/solar_new.py"],
+           [
+                "python", "run_button.py",
+                json.dumps(data.dict())
+            ],
             capture_output=True,
             text=True,
             check=True
@@ -122,9 +148,9 @@ def save_outputs():
                         file_options={"upsert": True}
                     )
                     uploaded += 1
-        return {"status": f"✅ Uploaded {uploaded} files to Supabase."}
+        return {"status": f" Uploaded {uploaded} files to Supabase."}
     except Exception as e:
-        return {"error": f"❌ Upload failed: {e}"}
+        return {"error": f" Upload failed: {e}"}
 
 # Test route to check if the server is working
 @app.get("/test")

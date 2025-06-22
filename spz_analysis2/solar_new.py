@@ -21,10 +21,12 @@ def resolve_path(relative_path):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, relative_path)
 
-# --- Configuration ---
-epw_file = resolve_path("newyork.epw")  # EPW file in same directory
-mesh_file = resolve_path("../spz_pipeline/pipeline_outputs/merged_model.3dm")
-output_glb = resolve_path("../spz_pipeline/pipeline_outputs/solar_radiation_example_image.glb")
+epw_file = os.environ.get("LOCAL_EPW")
+mesh_file = os.environ.get("LOCAL_MESH")
+output_glb = os.environ.get("LOCAL_OUTPUT")
+
+if not epw_file or not mesh_file or not output_glb:
+    raise RuntimeError("Missing required environment variables: LOCAL_EPW, LOCAL_MESH, LOCAL_OUTPUT")
 offset_dist = 0.1  # Offset for analysis points
 
 # Move this function outside main(), at the module level
@@ -66,20 +68,20 @@ def validate_solar_analysis(radiation_values, lb_mesh):
         print(f"North-facing surfaces avg radiation: {north_avg:.1f}")
         print(f"South-facing surfaces avg radiation: {south_avg:.1f}")
         print(f"North/South ratio: {north_south_ratio:.2f} (should be < 1.0)")
-        print(f"Plausibility: {'✅ GOOD' if north_south_ratio < 0.8 else '❌ SUSPICIOUS'}")
+        print(f"Plausibility: {'✅ GOOD' if north_south_ratio < 0.8 else ' SUSPICIOUS'}")
     
     # Check radiation range
     print(f"Radiation range: {min(radiation_values):.1f} - {max(radiation_values):.1f} kWh/m²")
     expected_min = 100  # Adjust based on your climate
     expected_max = 2000  # Adjust based on your climate
-    print(f"Range check: {'✅ GOOD' if min(radiation_values) > expected_min and max(radiation_values) < expected_max else '❌ SUSPICIOUS'}")
+    print(f"Range check: {' GOOD' if min(radiation_values) > expected_min and max(radiation_values) < expected_max else '❌ SUSPICIOUS'}")
     
     # Check for outliers (standard deviation)
     std_dev = np.std(radiation_values)
     mean_val = np.mean(radiation_values)
     cv = std_dev / mean_val  # Coefficient of variation
     print(f"Statistical variation (CV): {cv:.2f}")
-    print(f"Variation check: {'✅ GOOD' if cv < 0.8 else '❌ HIGH VARIATION'}")
+    print(f"Variation check: {' GOOD' if cv < 0.8 else ' HIGH VARIATION'}")
     
     return north_south_ratio, cv
 
