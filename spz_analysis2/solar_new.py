@@ -420,9 +420,9 @@ def main():
 
     print(f"Generated {len(solar_positions)} sun positions for analysis")
 
-    # Limit to 100 sun positions for faster processing
-    if len(solar_positions) > 100:
-        indices = np.linspace(0, len(solar_positions) - 1, 100, dtype=int)
+    # Limit to 50 for faster processing
+    if len(solar_positions) > 50:
+        indices = np.linspace(0, len(solar_positions) - 1, 50, dtype=int)
         solar_positions = [solar_positions[i] for i in indices]
         print(f"Limited sun positions to {len(solar_positions)} for faster analysis")
 
@@ -452,21 +452,61 @@ def main():
     if not all_meshes:
         raise RuntimeError("No meshes found in the model file")
     
-    # Process the LAST mesh as the target (example_image) and the rest as context
-    target_meshes = [all_meshes[-1][0]]  # Get the last mesh
-    context_meshes = [mesh[0] for mesh in all_meshes[:-1]]  # All except the last mesh
-    
+    # Process the LAST mesh as the target, the rest as context
+    target_meshes = [all_meshes[-1][0]]  # Only the last mesh is the target
+    context_meshes = [mesh[0] for mesh in all_meshes[:-1]]  # All others are context
+
     print(f"Using the last mesh '{all_meshes[-1][1]}' as target, and {len(context_meshes)} other meshes as context")
     print(f"Found {len(target_meshes)} target meshes and {len(context_meshes)} context meshes")
     
-    # Process target meshes for analysis
+    # Process target mesh for analysis
     target_vertices, target_faces = process_meshes(target_meshes)
     
-    # Process context meshes (only needed for shadow casting)
-    context_vertices, context_faces = process_meshes(context_meshes)
+    # Simplify only the target mesh if too many faces
+    import trimesh
+    target_face_target = 5000
+    target_trimesh_raw = trimesh.Trimesh(vertices=np.array(target_vertices), faces=np.array(target_faces))
+    current_faces = len(target_trimesh_raw.faces)
+
+    if current_faces > target_face_target:
+        # Check if the mesh is suitable for simplification
+        if not target_trimesh_raw.is_watertight:
+            print("Warning: Target mesh is not watertight - attempting simplification anyway.")
+        
+        # Fix: Use target_reduction as a PERCENTAGE TO KEEP
+        # 0.1 = keep 10% of faces (remove 90%)
+        target_reduction = target_face_target / current_faces  # Calculate ratio dynamically
+        
+        print(f"Simplifying mesh from {current_faces} faces using keep_ratio={target_reduction:.3f}")
+        print(f"Expected result: ~{int(current_faces * target_reduction)} faces")
+        
+        try:
+            # Clean mesh before simplification
+            target_trimesh_raw.update_faces(target_trimesh_raw.nondegenerate_faces())
+            target_trimesh_raw.update_faces(target_trimesh_raw.unique_faces())
+            target_trimesh_raw.remove_unreferenced_vertices()
+            
+            # Try with the ratio approach first
+            simplified = target_trimesh_raw.simplify_quadric_decimation(target_reduction)
+            
+            # Only update if actually simplified
+            if len(simplified.faces) < current_faces:
+                target_trimesh_raw = simplified
+                target_vertices = target_trimesh_raw.vertices.tolist()
+                target_faces = target_trimesh_raw.faces.tolist()
+                print(f"Simplified to {len(target_faces)} faces")
+            else:
+                print(f"Simplification didn't reduce faces. Proceeding with original mesh.")
+        except Exception as e:
+            print(f"Mesh simplification failed: {e}. Proceeding with original mesh.")
+    else:
+        print(f"Skipping simplification: mesh already has only {current_faces} faces (target: {target_face_target}).")
     
-    # Create Ladybug meshes for analysis
+    # Now create Ladybug mesh for the target
     target_lb_mesh = create_ladybug_mesh(target_vertices, target_faces)
+
+    # Process context meshes (no simplification)
+    context_vertices, context_faces = process_meshes(context_meshes)
     context_lb_mesh = create_ladybug_mesh(context_vertices, context_faces)
     
     # --- 4. Compute Solar Radiation (with multiprocessing) ---
