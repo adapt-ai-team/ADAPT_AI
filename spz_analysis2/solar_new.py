@@ -14,6 +14,8 @@ from ladybug_geometry.geometry3d.line import LineSegment3D
 import os
 import multiprocessing as mp
 from tqdm import tqdm  # Also make sure tqdm is imported for the progress bar
+import tempfile
+import requests
 
 # Add path resolver helper at the top after imports
 def resolve_path(relative_path):
@@ -21,12 +23,38 @@ def resolve_path(relative_path):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, relative_path)
 
-epw_file = os.environ.get("LOCAL_EPW")
-mesh_file = os.environ.get("LOCAL_MESH")
-output_glb = os.environ.get("LOCAL_OUTPUT")
+# Helper to download a file if given a URL
+def get_local_path(path_or_url, suffix):
+    if path_or_url.startswith('http://') or path_or_url.startswith('https://'):
+        print(f"Downloading {path_or_url} ...")
+        response = requests.get(path_or_url)
+        response.raise_for_status()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp.write(response.content)
+        tmp.close()
+        print(f"Downloaded to {tmp.name}")
+        return tmp.name
+    else:
+        return path_or_url
 
-if not epw_file or not mesh_file or not output_glb:
-    raise RuntimeError("Missing required environment variables: LOCAL_EPW, LOCAL_MESH, LOCAL_OUTPUT")
+import argparse
+import os
+
+# Setup argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--user_id", required=True)
+parser.add_argument("--project_id", required=True)
+parser.add_argument("--epw_url", required=True)
+parser.add_argument("--mesh_url", required=True)
+args = parser.parse_args()
+
+# Download files if URLs, else use as-is
+local_epw = get_local_path(args.epw_url, ".epw")
+local_mesh = get_local_path(args.mesh_url, ".3dm")
+output_glb = "solar_radiation.glb"  # Always save as this name in CWD
+
+if not local_epw or not local_mesh or not output_glb:
+    raise RuntimeError("Missing required file paths: epw, mesh, or output")
 offset_dist = 0.1  # Offset for analysis points
 
 # Move this function outside main(), at the module level
@@ -367,7 +395,7 @@ def create_solar_path_visualization(sunpath, scale=500):
 
 def main():
     # --- 1. Load Climate Data ---
-    epw = EPW(epw_file)
+    epw = EPW(local_epw)
     location = epw.location
     # Adjust direct_normal_radiation to annual values
     # Current values are hourly, multiply by hours or average
@@ -403,9 +431,9 @@ def main():
     print(f"Sun positions: {len(solar_positions)}, Solar data points: {len(solar_data)}")
 
     # --- 3. Load Mesh Geometry ---
-    model = rhino3dm.File3dm.Read(mesh_file)
+    model = rhino3dm.File3dm.Read(local_mesh)
     if not model:
-        raise RuntimeError(f"Failed to read 3DM file: {mesh_file}")
+        raise RuntimeError(f"Failed to read 3DM file: {local_mesh}")
 
     # Get all meshes from the model
     all_meshes = []

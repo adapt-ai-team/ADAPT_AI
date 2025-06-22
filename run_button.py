@@ -26,6 +26,11 @@ def upload_to_supabase(bucket, supabase_path, local_path):
             file_options={"upsert": "true"}  # String, not Boolean
         )
 
+def download_from_supabase(bucket, supabase_path, local_path):
+    res = supabase.storage.from_(bucket).download(supabase_path)
+    with open(local_path, "wb") as f:
+        f.write(res)
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python run_button.py '{\"user_id\":..., \"project_id\":..., \"epw_url\":..., \"mesh_url\":...}'")
@@ -45,33 +50,29 @@ def main():
 
     user_id = data["user_id"]
     project_id = data["project_id"]
-    epw_url = data["epw_url"]
-    mesh_url = data["mesh_url"]
+    epw_url = data["epw_url"]  # This is now a public URL
+    mesh_url = data["mesh_url"]  # This is now a public URL
 
     local_epw = "downloaded_climate.epw"
     local_mesh = "downloaded_merged_model.3dm"
     local_output = "solar_radiation.glb"
     output_supabase_path = f"{user_id}/{project_id}/solar_radiation.glb"
 
-    try:
-        print(" Downloading EPW file...")
-        download_file(epw_url, local_epw)
-        print(" Downloading mesh file...")
-        download_file(mesh_url, local_mesh)
-    except Exception as e:
-        print(f" Download failed: {e}")
-        sys.exit(1)
-
-    # Pass info to solar_new.py via env vars
-    os.environ["USER_ID"] = user_id
-    os.environ["PROJECT_ID"] = project_id
-    os.environ["LOCAL_EPW"] = local_epw
-    os.environ["LOCAL_MESH"] = local_mesh
-    os.environ["LOCAL_OUTPUT"] = local_output
+    # Download from public URLs
+    print(" Downloading EPW file from public URL...")
+    download_file(epw_url, local_epw)
+    print(" Downloading mesh file from public URL...")
+    download_file(mesh_url, local_mesh)
 
     try:
         print(" Running solar analysis...")
-        subprocess.run([sys.executable, "spz_analysis2/solar_new.py"], check=True)
+        subprocess.run([
+            sys.executable, "spz_analysis2/solar_new.py",
+            "--user_id", user_id,
+            "--project_id", project_id,
+            "--epw_url", epw_url,
+            "--mesh_url", mesh_url
+        ], check=True)
     except subprocess.CalledProcessError as e:
         print(f" Solar analysis failed:\n{e}")
         sys.exit(1)
