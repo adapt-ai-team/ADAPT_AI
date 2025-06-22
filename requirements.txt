@@ -42,7 +42,6 @@ replicate
 flask
 triangle
 pydantic
-json
 
 
 
