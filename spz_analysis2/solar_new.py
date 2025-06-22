@@ -96,13 +96,13 @@ def validate_solar_analysis(radiation_values, lb_mesh):
         print(f"North-facing surfaces avg radiation: {north_avg:.1f}")
         print(f"South-facing surfaces avg radiation: {south_avg:.1f}")
         print(f"North/South ratio: {north_south_ratio:.2f} (should be < 1.0)")
-        print(f"Plausibility: {'✅ GOOD' if north_south_ratio < 0.8 else ' SUSPICIOUS'}")
+        print(f"Plausibility: {'GOOD' if north_south_ratio < 0.8 else ' SUSPICIOUS'}")
     
     # Check radiation range
     print(f"Radiation range: {min(radiation_values):.1f} - {max(radiation_values):.1f} kWh/m²")
     expected_min = 100  # Adjust based on your climate
     expected_max = 2000  # Adjust based on your climate
-    print(f"Range check: {' GOOD' if min(radiation_values) > expected_min and max(radiation_values) < expected_max else '❌ SUSPICIOUS'}")
+    print(f"Range check: {'GOOD' if min(radiation_values) > expected_min and max(radiation_values) < expected_max else 'SUSPICIOUS'}")
     
     # Check for outliers (standard deviation)
     std_dev = np.std(radiation_values)
@@ -420,6 +420,12 @@ def main():
 
     print(f"Generated {len(solar_positions)} sun positions for analysis")
 
+    # Limit to 100 sun positions for faster processing
+    if len(solar_positions) > 100:
+        indices = np.linspace(0, len(solar_positions) - 1, 100, dtype=int)
+        solar_positions = [solar_positions[i] for i in indices]
+        print(f"Limited sun positions to {len(solar_positions)} for faster analysis")
+
     # Add this debug check
     if hasattr(solar_positions[0], 'sun_vector_reversed'):
         print("Using sun_vector_reversed")
@@ -573,7 +579,7 @@ def main():
     
     # Export combined model
     combined_mesh.export(output_glb)
-    print(f"✅ Model with solar paths saved as {output_glb}")
+    print(f" Model with solar paths saved as {output_glb}")
     
     # --- 5. Export Legend Image ---
     # Create a 2D legend image using matplotlib
@@ -601,15 +607,15 @@ def main():
     
     # Add solar path legend
     plt.figtext(0.1, 0.2, 'Solar Paths:', fontsize=8)
-    plt.figtext(0.1, 0.17, '■ Summer Solstice', color='orange', fontsize=8)
-    plt.figtext(0.1, 0.14, '■ Winter Solstice', color='blue', fontsize=8)
-    plt.figtext(0.1, 0.11, '■ Spring Equinox', color='green', fontsize=8)
-    plt.figtext(0.1, 0.08, '■ Fall Equinox', color='yellow', fontsize=8)
+    plt.figtext(0.1, 0.17, 'Summer Solstice', color='orange', fontsize=8)
+    plt.figtext(0.1, 0.14, 'Winter Solstice', color='blue', fontsize=8)
+    plt.figtext(0.1, 0.11, 'Spring Equinox', color='green', fontsize=8)
+    plt.figtext(0.1, 0.08, 'Fall Equinox', color='yellow', fontsize=8)
     
     # Save the image with better resolution
     legend_image = output_glb.replace('.glb', '_legend.png')
     plt.savefig(legend_image, bbox_inches='tight', dpi=300)
-    print(f"✅ Legend image saved as {legend_image}")
+    print(f" Legend image saved as {legend_image}")
 
 if __name__ == "__main__":
     main()

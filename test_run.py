@@ -10,3 +10,4 @@ output_glb_path = f"{user_id}/{project_id}/model.glb"
 
 # Run the pipeline
 run_trellis_generation(image_url, output_glb_path)
+  
