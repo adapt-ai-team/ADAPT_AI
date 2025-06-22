@@ -12,12 +12,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-def download_file(url, local_path):
-    r = requests.get(url)
-    r.raise_for_status()
-    with open(local_path, "wb") as f:
-        f.write(r.content)
-
 def upload_to_supabase(bucket, supabase_path, local_path):
     with open(local_path, "rb") as f:
         supabase.storage.from_(bucket).upload(
@@ -25,11 +19,6 @@ def upload_to_supabase(bucket, supabase_path, local_path):
             file=f,
             file_options={"upsert": "true"}  # String, not Boolean
         )
-
-def download_from_supabase(bucket, supabase_path, local_path):
-    res = supabase.storage.from_(bucket).download(supabase_path)
-    with open(local_path, "wb") as f:
-        f.write(res)
 
 def main():
     if len(sys.argv) < 2:
@@ -50,19 +39,11 @@ def main():
 
     user_id = data["user_id"]
     project_id = data["project_id"]
-    epw_url = data["epw_url"]  # This is now a public URL
-    mesh_url = data["mesh_url"]  # This is now a public URL
+    epw_url = data["epw_url"]  # Public URL
+    mesh_url = data["mesh_url"]  # Public URL
 
-    local_epw = "downloaded_climate.epw"
-    local_mesh = "downloaded_merged_model.3dm"
     local_output = "solar_radiation.glb"
     output_supabase_path = f"{user_id}/{project_id}/solar_radiation.glb"
-
-    # Download from public URLs
-    print(" Downloading EPW file from public URL...")
-    download_file(epw_url, local_epw)
-    print(" Downloading mesh file from public URL...")
-    download_file(mesh_url, local_mesh)
 
     try:
         print(" Running solar analysis...")
