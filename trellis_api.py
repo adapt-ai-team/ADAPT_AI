@@ -4,6 +4,7 @@ import tempfile
 from dotenv import load_dotenv
 import replicate
 from supabase import create_client, Client
+import time
 
 # --- Load environment variables ---
 load_dotenv()
@@ -55,14 +56,22 @@ def run_trellis_generation(input_image, output_glb_path: str):
             raise Exception(f"❌ input_image path must be user_id/project_id/image_filename, got: {input_image}")
 
     # 2. Run Trellis model via Replicate
-    try:
-        output = client.run(
-            "firtoz/trellis:e8f6c45206993f297372f5436b90350817bd9b4a0d52d2a76df50c1c8afa2b3c",
-            input={"images": [public_url], "generate_model": True}
-        )
-        print("🔁 Replicate output:", output)
-    except Exception as e:
-        raise Exception(f"❌ Replicate call failed: {e}")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            output = client.run(
+                "firtoz/trellis:e8f6c45206993f297372f5436b90350817bd9b4a0d52d2a76df50c1c8afa2b3c",
+                input={"images": [public_url], "generate_model": True},
+                timeout=600  # if supported
+            )
+            print("🔁 Replicate output:", output)
+            break  # Exit the retry loop on success
+        except Exception as e:
+            if "timed out" in str(e) and attempt < max_retries - 1:
+                print(f"⏳ Timeout occurred, retrying... ({attempt + 1}/{max_retries})")
+                time.sleep(5)  # Wait before retrying
+                continue
+            raise Exception(f"❌ Replicate call failed: {e}")
 
     # 3. Parse returned model file URL
     model_url = None
