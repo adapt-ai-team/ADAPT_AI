@@ -409,8 +409,8 @@ if __name__ == "__main__":
     # Run as a CLI tool or as a service
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("user_id", required=True)
-    parser.add_argument("project_id", required=True)
+    parser.add_argument("--user_id", required=True)
+    parser.add_argument("--project_id", required=True)
     args = parser.parse_args()
     
     # Start Flask in a background thread

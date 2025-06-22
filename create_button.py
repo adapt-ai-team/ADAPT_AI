@@ -176,9 +176,9 @@ def run_pipeline(user_id, project_id, image_url):
 
 def main():
     parser = argparse.ArgumentParser(description="Run the 3D generation pipeline")
-    parser.add_argument("user_id", type=str, help="User ID")
-    parser.add_argument("project_id", type=str, help="Project ID")
-    parser.add_argument("image_url", type=str, help="Image URL")
+    parser.add_argument("--user_id", type=str, help="User ID")
+    parser.add_argument("--project_id", type=str, help="Project ID")
+    parser.add_argument("--image_url", type=str, help="Image URL")
     args = parser.parse_args()
 
     result = run_pipeline(args.user_id, args.project_id, args.image_url)
