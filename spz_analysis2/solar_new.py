@@ -225,8 +225,8 @@ for idx, (m, n) in enumerate(all_meshes):
 # Simplify only the last mesh
 mesh = all_meshes[-1][0]
 original_face_count = len(mesh.Faces)
-simplification_ratio = 0.2  # 20% of original
-calculated_target = max(2000, min(8000, int(original_face_count * simplification_ratio)))
+simplification_ratio = 0.5  # 20% of original
+calculated_target = max(5000, min(20000, int(original_face_count * simplification_ratio)))
 target_faces = calculated_target
 logger.info(f"\nSimplifying the last mesh (Mesh {len(all_meshes)}) with {original_face_count} faces.")
 logger.info(f"Target face count for simplification: {target_faces}")
