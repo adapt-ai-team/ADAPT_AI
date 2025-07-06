@@ -80,11 +80,11 @@ python api_server.py
   "epw_url": "https://your-climate-bucket/weather.epw",
   "mesh_url": "https://your-solar-bucket/user123/proj001/merged_model.3dm"
 }
-
+```
 /save - Upload results from local pipeline_outputs to Supabase
 POST /save
 
-```
+
 
 🖥️ Manual Usage (CLI)
 Generate and Align Model
