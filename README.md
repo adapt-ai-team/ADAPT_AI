@@ -84,6 +84,8 @@ python api_server.py
 /save - Upload results from local pipeline_outputs to Supabase
 POST /save
 
+```
+
 🖥️ Manual Usage (CLI)
 Generate and Align Model
 
